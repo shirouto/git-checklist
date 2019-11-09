@@ -93,7 +93,7 @@ parseChecklist = parseTodo `P.sepEndBy` P.newline
 
 printChecklist :: Checklist -> String
 printChecklist = renderStyle noBreaks . vcat . map prettyTodo . todos
-    where noBreaks = style { mode = LeftMode }
+    where noBreaks = Pretty.style { mode = LeftMode }
 
 upgradeFileFormat :: IO ()
 upgradeFileFormat = do
@@ -204,23 +204,23 @@ cli_actors = mconcat
             , command "remove" (info (Option <$> common <*> remove)
                                      (progDesc "Remove a TODO (can't be undone)"))
             ]
-    where add    = Right . Add . unwords <$> arguments str (metavar "DESCRIPTION")
+    where add    = Right . Add . unwords <$> many (argument str (metavar "DESCRIPTION"))
           remove = Right . Remove <$> argument auto (metavar "N")
           done   = Right . Done <$> argument auto (metavar "N")
           undo   = Right . Undo <$> argument auto (metavar "N")
           common = location False -- cannot apply to many branches
 
 location :: Bool -> Parser Location
-location many = nullOption (value Head <> internal)
+location many = option disabled (value Head <> internal)
               <|> Named <$> strOption (long "branch" <> short 'b' <> metavar "BRANCH")
               <|> if many then allbranches else empty
-    where allbranches = flag' All (long "all" <> short 'a' <> metavar "")
+    where allbranches = flag' All (long "all" <> short 'a')
 
 argParser :: ParserInfo Option
 argParser = info (helper <*> version <*> cli)
                     (progDesc "Per-branch TODO list for Git repositories")
     where blank :: Parser Option -- user enters no arguments
-          blank = nullOption (value (Option Head (Left List)) <> internal)
+          blank = option disabled (value (Option Head (Left List)) <> internal)
           cli = blank <|> hsubparser (cli_observers <> cli_actors)
           version = flip abortOption (long "version" <> short 'v' <> help "Show version")
                         (InfoMsg $ "git-checklist v" ++ showVersion V.version)
